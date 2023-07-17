@@ -1,0 +1,23 @@
+[package]
+name = "tui_pokedex"
+version = "0.1.0"
+edition = "2023"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+reqwest = { version = "0.11.18", features = ["json","blocking"] } # reqwest with JSON parsing support
+futures = "0.3" # for our async / await blocks
+tokio = { version = "1.12.0", features = ["full"] } # for our async runtime
+serde = { version = "1.0.130", features = ["derive"] } # for JSON parsing
+image = "0.24.6"
+
+[dependencies.cursive]
+version = "0.20"
+default-features = false
+
+[features]
+default = ["crossterm-backend"]
+termion-backend = ["cursive/termion-backend"]
+crossterm-backend = ["cursive/crossterm-backend"]
+blt-backend = ["cursive/blt-backend"]
