@@ -1,17 +1,13 @@
 use cursive::theme::{Color, ColorStyle};
 use cursive::view::{Nameable, Resizable};
-use cursive::views::{
-    Button, Canvas, Dialog, DummyView, EditView, LinearLayout, ScrollView, SelectView, TextView,
-};
+use cursive::views::{Canvas, Dialog, EditView, LinearLayout, ScrollView, TextView};
 use cursive::Cursive;
 use cursive::Printer;
 use image::io::Reader as ImageReader;
-use image::{DynamicImage, GenericImageView, Rgba};
+use image::{DynamicImage, GenericImageView};
 use reqwest::blocking::Response;
 use serde::Deserialize;
 use std::io::Cursor;
-use std::io::Read;
-use tokio;
 
 #[derive(Deserialize)]
 struct Species {
@@ -45,7 +41,7 @@ fn draw(_: &(), p: &Printer, img: &DynamicImage) {
         //     continue;
         // };
         let style = ColorStyle::new(
-            Color::Rgb(255, 255, 255),
+            Color::TerminalDefault,
             Color::Rgb(pixel[0], pixel[1], pixel[2]),
         );
 
@@ -56,10 +52,8 @@ fn draw(_: &(), p: &Printer, img: &DynamicImage) {
 }
 
 fn trim(img: &mut DynamicImage) {
-    let mut x = 0;
-    let mut y = 0;
-    let mut width = img.width();
-    let mut height = img.height();
+    let (mut x, mut y) = (0, 0);
+    let (mut width, mut height) = img.dimensions();
     // top
     for i in 0..height {
         for j in 0..width {
@@ -132,35 +126,25 @@ fn search(s: &mut Cursive) {
     let url = format!("https://pokeapi.co/api/v2/pokemon/{}", &search);
 
     // using reqwest for client get request
-    let resp: Response;
-    match reqwest::blocking::get(url) {
-        Err(_) => {
-            s.add_layer(
-                Dialog::text("There was an error connecting to the server!").button("Ok", |s| {
-                    s.pop_layer();
-                }),
-            );
-            return;
-        }
-        Ok(val) => {
-            resp = val;
-        }
+    let Ok(resp) = reqwest::blocking::get(url) 
+    else {
+        s.add_layer(
+            Dialog::text("There was an error connecting to the server!").button("Ok", |s| {
+                s.pop_layer();
+            }),
+        );
+        return;
     };
-    let post_res: Ip;
     // Use the type above with serde and reqwest json feature
-    match resp.json() {
-        Err(_) => {
-            s.add_layer(
-                Dialog::text("Invalid input! Check if your spelling was correct or the pokemon you entered exists!").button("Ok", |s| {
-                    s.pop_layer();
-                }),
-            );
-            return;
-        }
-        Ok(val) => {
-            post_res = val;
-        }
-    }
+    let Ok(post_res) = resp.json::<Ip>()
+    else {
+        s.add_layer(
+            Dialog::text("Invalid input! Check if your spelling was correct or the pokemon you entered exists!").button("Ok", |s| {
+                s.pop_layer();
+            }),
+        );
+        return;
+    };
 
     let img = reqwest::blocking::get(&post_res.sprites.front_default)
         .unwrap()
