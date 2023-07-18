@@ -6,7 +6,7 @@ use cursive::views::{
 use cursive::Cursive;
 use cursive::Printer;
 use image::io::Reader as ImageReader;
-use image::{DynamicImage, GenericImageView};
+use image::{DynamicImage, GenericImageView, Rgba};
 use reqwest::blocking::Response;
 use serde::Deserialize;
 use std::io::Cursor;
@@ -53,6 +53,70 @@ fn draw(_: &(), p: &Printer, img: &DynamicImage) {
             printer.print((x, y), " ");
         });
     }
+}
+
+fn trim(img: &mut DynamicImage) {
+    let mut x = 0;
+    let mut y = 0;
+    let mut width = img.width();
+    let mut height = img.height();
+    // top
+    for i in 0..height {
+        for j in 0..width {
+            let pixel = img.get_pixel(j, i);
+            if pixel[3] != 0 {
+                y = i;
+                break;
+            }
+        }
+        if y != 0 {
+            break;
+        }
+    }
+    // bottom
+    for i in (0..height).rev() {
+        for j in 0..width {
+            let pixel = img.get_pixel(j, i);
+            if pixel[3] != 0 {
+                height = i;
+                break;
+            }
+        }
+        if height != img.height() {
+            break;
+        }
+    }
+    // left
+    for i in 0..width {
+        for j in 0..height {
+            let pixel = img.get_pixel(i, j);
+            if pixel[3] != 0 {
+                x = i;
+                break;
+            }
+        }
+        if x != 0 {
+            break;
+        }
+    }
+    // right
+    for i in (0..width).rev() {
+        for j in 0..height {
+            let pixel = img.get_pixel(i, j);
+            if pixel[3] != 0 {
+                width = i;
+                break;
+            }
+        }
+        if width != img.width() {
+            break;
+        }
+    }
+    *img = img.crop_imm(x, y, width - x, height - y).resize_to_fill(
+        50,
+        50,
+        image::imageops::FilterType::Nearest,
+    );
 }
 
 //handles callback after search now button on the starting dialog
@@ -104,9 +168,8 @@ fn search(s: &mut Cursive) {
         .unwrap();
     let img = Cursor::new(img);
     let img = ImageReader::new(img).with_guessed_format().expect("msg");
-    let img = img.decode().expect("Failed to read image");
-    let img = img.resize(50, 50, image::imageops::FilterType::Nearest);
-    let img = img.crop_imm(0, 10, 50, 40);
+    let mut img = img.decode().expect("Failed to read image");
+    trim(&mut img);
 
     //create comma seperated string of list of pokemon types
     let types = post_res
@@ -132,7 +195,7 @@ fn search(s: &mut Cursive) {
                 // Testing Image generation possibility
                 Canvas::new(())
                     .with_draw(move |_, p| draw(&(), p, &img))
-                    .fixed_size((50, 30)),
+                    .fixed_size((50, 50)),
             )
             .child(TextView::new(output_text)),
     );
